@@ -3,6 +3,7 @@
     void Boot_Do_Jump(uint32_t sp,
     uint32_t pc,uint32_t vtor_addr)
     {
+        __disable_irq();
        
        for(uint8_t i=0;i<8;i++)
        {
@@ -10,17 +11,19 @@
         NVIC->ICPR[i]=0xFFFFFFFF;
        }
        SysTick->CTRL=0;
-        __disable_irq();
+       SysTick->LOAD=0;
+       SysTick->VAL=0;
         __set_MSP(sp);
 
         SCB->VTOR=vtor_addr;
         __DSB();
         __ISB();
-volatile uint32_t addr=pc;
-        typedef void (*resetfunc)(void);
-        resetfunc resetentry=(resetfunc)addr;
-        printf("11\r\n");
-        resetentry();
+
+       __asm volatile (
+        "msr msp, %0 \n"
+        "bx %1        \n"
+        : : "r" (sp), "r" (pc) : "memory"
+    );
 
         while(1)
         {
